@@ -3,7 +3,7 @@
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-
+import os
 import torch
 import torch.distributed
 import torch.nn.functional as F
@@ -15,9 +15,12 @@ from sam2.modeling.sam.prompt_encoder import PromptEncoder
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 
+# import fvcore
+# from fvcore import nn
+# from fvcore.nn import flop_count_table
+# from .analysis import FlopCountAnalysis
 # a large negative value as a placeholder score for missing objects
 NO_OBJ_SCORE = -1024.0
-
 
 class SAM2Base(torch.nn.Module):
     def __init__(
@@ -463,6 +466,17 @@ class SAM2Base(torch.nn.Module):
     def forward_image(self, img_batch: torch.Tensor):
         """Get the image feature on the input batch."""
         backbone_out = self.image_encoder(img_batch)
+
+        # flops_image_encoder = FlopCountAnalysis(self.image_encoder, img_batch)
+        # save_dir = "/home/wangkai/EfficientSAM2/image_encoder"
+        # if not os.path.exists(save_dir):
+        #     os.makedirs(save_dir)
+        # n = 0
+        # while os.path.exists(os.path.join(save_dir, f"summary_{n}.txt")):
+        #     n += 1
+        # with open(os.path.join(save_dir, f"summary_{n}.txt"), "w") as f:
+        #     f.write(flop_count_table(flops_image_encoder))
+
         if self.use_high_res_features_in_sam:
             # precompute projected level 0 and level 1 features in SAM decoder
             # to avoid running it again on every SAM click
@@ -657,6 +671,17 @@ class SAM2Base(torch.nn.Module):
             memory_pos=memory_pos_embed,
             num_obj_ptr_tokens=num_obj_ptr_tokens,
         )
+
+        # flops_memory_attention = FlopCountAnalysis(self.memory_attention, (current_vision_feats, memory, current_vision_pos_embeds, memory_pos_embed, num_obj_ptr_tokens))
+        # save_dir = "/home/wangkai/EfficientSAM2/memory_attention"
+        # if not os.path.exists(save_dir):
+        #     os.makedirs(save_dir)
+        # n = 0
+        # while os.path.exists(os.path.join(save_dir, f"summary_{n}.txt")):
+        #     n += 1
+        # with open(os.path.join(save_dir, f"summary_{n}.txt"), "w") as f:
+        #     f.write(flop_count_table(flops_memory_attention))
+
         # reshape the output (HW)BC => BCHW
         pix_feat_with_mem = pix_feat_with_mem.permute(1, 2, 0).view(B, C, H, W)
         return pix_feat_with_mem
@@ -696,6 +721,18 @@ class SAM2Base(torch.nn.Module):
         maskmem_out = self.memory_encoder(
             pix_feat, mask_for_mem, skip_mask_sigmoid=True  # sigmoid already applied
         )
+
+        # flops_memory_encoder = FlopCountAnalysis(self.memory_encoder, (pix_feat, mask_for_mem, True))
+        # save_dir = "/home/wangkai/EfficientSAM2/memory_encoder"
+        # if not os.path.exists(save_dir):
+        #     os.makedirs(save_dir)
+        # n = 0
+        # while os.path.exists(os.path.join(save_dir, f"summary_{n}.txt")):
+        #     n += 1
+        # with open(os.path.join(save_dir, f"summary_{n}.txt"), "w") as f:
+        #     f.write(flop_count_table(flops_memory_encoder))
+
+
         maskmem_features = maskmem_out["vision_features"]
         maskmem_pos_enc = maskmem_out["vision_pos_enc"]
 

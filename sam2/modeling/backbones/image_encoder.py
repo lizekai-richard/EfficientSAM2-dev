@@ -5,10 +5,14 @@
 # LICENSE file in the root directory of this source tree.
 
 from typing import List, Optional
-
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+import fvcore
+from fvcore.nn import flop_count_table
+from ..analysis import FlopCountAnalysis
 
 
 class ImageEncoder(nn.Module):
@@ -28,7 +32,27 @@ class ImageEncoder(nn.Module):
 
     def forward(self, sample: torch.Tensor):
         # Forward through backbone
-        features, pos = self.neck(self.trunk(sample))
+        xs = self.trunk(sample)
+
+        print(len(xs))
+        for x in xs:
+            print(x.size())
+        features, pos = self.neck(xs)
+
+        # flops_trunk = FlopCountAnalysis(self.trunk, sample)
+        # flops_neck = FlopCountAnalysis(self.neck, out)
+
+        # save_dir = "/home/wangkai/EfficientSAM2/image_encoder"
+        # if not os.path.exists(save_dir):
+        #     os.makedirs(save_dir)
+        # n = 0
+        # while os.path.exists(os.path.join(save_dir, f"summary_{n}.txt")):
+        #     n += 1
+        # with open(os.path.join(save_dir, f"summary_{n}.txt"), "w") as f:
+        #     f.write(flop_count_table(flops_trunk))
+        #     f.write('\n')
+        #     f.write(flop_count_table(flops_neck))
+
         if self.scalp > 0:
             # Discard the lowest resolution features
             features, pos = features[: -self.scalp], pos[: -self.scalp]

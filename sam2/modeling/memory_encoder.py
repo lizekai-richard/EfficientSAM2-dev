@@ -3,7 +3,7 @@
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-
+import os
 import math
 from typing import Tuple
 
@@ -12,6 +12,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from sam2.modeling.sam2_utils import DropPath, get_clones, LayerNorm2d
+
+import fvcore
+from fvcore.nn import flop_count_table
+from .analysis import FlopCountAnalysis
 
 
 class MaskDownSampler(nn.Module):
@@ -167,15 +171,42 @@ class MemoryEncoder(nn.Module):
             masks = F.sigmoid(masks)
         masks = self.mask_downsampler(masks)
 
+        # flops_mask_downsampler = FlopCountAnalysis(self.mask_downsampler, masks)
+
         ## Fuse pix_feats and downsampled masks
         # in case the visual features are on CPU, cast them to CUDA
         pix_feat = pix_feat.to(masks.device)
 
         x = self.pix_feat_proj(pix_feat)
+
+        # flops_feat_proj = FlopCountAnalysis(self.pix_feat_proj, pix_feat)
+
         x = x + masks
         x = self.fuser(x)
+
+        # flops_fuser = FlopCountAnalysis(self.fuser, x)
+
         x = self.out_proj(x)
 
+        # flops_out_proj = FlopCountAnalysis(self.out_proj, x)
+
         pos = self.position_encoding(x).to(x.dtype)
+
+
+        # save_dir = "/home/wangkai/EfficientSAM2/memory_encoder"
+        # if not os.path.exists(save_dir):
+        #     os.makedirs(save_dir)
+        # n = 0
+        # while os.path.exists(os.path.join(save_dir, f"summary_{n}.txt")):
+        #     n += 1
+        # with open(os.path.join(save_dir, f"summary_{n}.txt"), "w") as f:
+        #     f.write(flop_count_table(flops_mask_downsampler))
+        #     f.write('\n')
+        #     f.write(flop_count_table(flops_feat_proj))
+        #     f.write('\n')
+        #     f.write(flop_count_table(flops_fuser))
+        #     f.write('\n')
+        #     f.write(flop_count_table(flops_out_proj))
+
 
         return {"vision_features": x, "vision_pos_enc": [pos]}
