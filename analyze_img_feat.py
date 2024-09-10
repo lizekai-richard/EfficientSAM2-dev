@@ -2,6 +2,7 @@ import os
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 
 feat_dir = "./sample_img_feats"
@@ -28,7 +29,7 @@ feat_diff_by_stage = [[] for _ in range(len(all_img_features[0]))]
 pos_diff_by_stage = [[] for _ in range(len(all_img_features[0]))]
 
 for stage in range(len(all_img_features[0])):
-    for i in range(num_frames):
+    for i in tqdm(range(num_frames)):
         for j in range(i):
             feat_i = all_img_features[i][stage]
             feat_j = all_img_features[j][stage]
