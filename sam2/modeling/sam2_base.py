@@ -664,7 +664,7 @@ class SAM2Base(torch.nn.Module):
         memory = torch.cat(to_cat_memory, dim=0)
         memory_pos_embed = torch.cat(to_cat_memory_pos_embed, dim=0)
 
-        pix_feat_with_mem, mem_ca_map = self.memory_attention(
+        pix_feat_with_mem, mem_cas = self.memory_attention(
             curr=current_vision_feats,
             curr_pos=current_vision_pos_embeds,
             memory=memory,
@@ -684,7 +684,7 @@ class SAM2Base(torch.nn.Module):
 
         # reshape the output (HW)BC => BCHW
         pix_feat_with_mem = pix_feat_with_mem.permute(1, 2, 0).view(B, C, H, W)
-        return pix_feat_with_mem
+        return pix_feat_with_mem, mem_cas
 
     def _encode_new_memory(
         self,
@@ -778,7 +778,7 @@ class SAM2Base(torch.nn.Module):
             )
         else:
             # fused the visual feature with previous memory features in the memory bank
-            pix_feat_with_mem,  = self._prepare_memory_conditioned_features(
+            pix_feat_with_mem, mem_cas = self._prepare_memory_conditioned_features(
                 frame_idx=frame_idx,
                 is_init_cond_frame=is_init_cond_frame,
                 current_vision_feats=current_vision_feats[-1:],
@@ -788,6 +788,8 @@ class SAM2Base(torch.nn.Module):
                 num_frames=num_frames,
                 track_in_reverse=track_in_reverse,
             )
+
+            torch.save(mem_cas, f"../../mem_cross_attn/frame{frame_idx}.pt")
             # apply SAM-style segmentation head
             # here we might feed previously predicted low-res SAM mask logits into the SAM mask decoder,
             # e.g. in demo where such logits come from earlier interaction instead of correction sampling

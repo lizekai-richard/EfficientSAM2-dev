@@ -157,18 +157,23 @@ class MemoryAttention(nn.Module):
             memory = memory.transpose(0, 1)
             memory_pos = memory_pos.transpose(0, 1)
 
+        mem_cas = []
+
         for layer in self.layers:
             kwds = {}
             if isinstance(layer.cross_attn_image, RoPEAttention):
                 kwds = {"num_k_exclude_rope": num_obj_ptr_tokens}
 
-            output = layer(
+            output, mem_ca_map = layer(
                 tgt=output,
                 memory=memory,
                 pos=memory_pos,
                 query_pos=curr_pos,
                 **kwds,
             )
+
+            mem_cas.append(mem_ca_map)
+
         normed_output = self.norm(output)
 
         if self.batch_first:
@@ -176,4 +181,4 @@ class MemoryAttention(nn.Module):
             normed_output = normed_output.transpose(0, 1)
             curr_pos = curr_pos.transpose(0, 1)
 
-        return normed_output
+        return normed_output, mem_cas
