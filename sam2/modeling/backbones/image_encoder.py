@@ -34,9 +34,9 @@ class ImageEncoder(nn.Module):
         # Forward through backbone
         xs = self.trunk(sample)
 
-        print(len(xs))
-        for x in xs:
-            print(x.size())
+        # print(len(xs))
+        # for x in xs:
+        #     print(x.size())
         features, pos = self.neck(xs)
 
         # flops_trunk = FlopCountAnalysis(self.trunk, sample)
