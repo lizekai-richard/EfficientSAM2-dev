@@ -846,9 +846,9 @@ class SAM2VideoPredictor(SAM2Base):
 
         with open(f"../sample_img_feats/frame{frame_idx}", "w") as f:
             json.dump({
-                'vision_feats': current_vision_feats,
-                'vision_pos_embeds': current_vision_pos_embeds,
-                'feat_sizes': feat_sizes
+                'vision_feats': current_vision_feats.tolist(),
+                'vision_pos_embeds': current_vision_pos_embeds.tolist(),
+                'feat_sizes': feat_sizes.tolist()
             }, f)
 
         # point and mask should not appear as input simultaneously on the same frame
