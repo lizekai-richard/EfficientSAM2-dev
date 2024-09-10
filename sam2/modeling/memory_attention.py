@@ -3,6 +3,7 @@
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
+import copy
 
 from typing import Optional
 
@@ -80,6 +81,14 @@ class MemoryAttentionLayer(nn.Module):
         tgt = tgt + self.dropout2(tgt2)
         return tgt
 
+    # def forward(
+    #     self,
+    #     tgt,
+    #     memory,
+    #     pos: Optional[Tensor] = None,
+    #     query_pos: Optional[Tensor] = None,
+    #     num_k_exclude_rope: int = 0,
+    # ) -> torch.Tensor:
     def forward(
         self,
         tgt,
@@ -87,16 +96,17 @@ class MemoryAttentionLayer(nn.Module):
         pos: Optional[Tensor] = None,
         query_pos: Optional[Tensor] = None,
         num_k_exclude_rope: int = 0,
-    ) -> torch.Tensor:
+    ):
 
         # Self-Attn, Cross-Attn
         tgt = self._forward_sa(tgt, query_pos)
         tgt = self._forward_ca(tgt, memory, query_pos, pos, num_k_exclude_rope)
+        mem_ca_map = copy.deepcopy(tgt)
         # MLP
         tgt2 = self.norm3(tgt)
         tgt2 = self.linear2(self.dropout(self.activation(self.linear1(tgt2))))
         tgt = tgt + self.dropout3(tgt2)
-        return tgt
+        return tgt, mem_ca_map
 
 
 class MemoryAttention(nn.Module):

@@ -844,9 +844,9 @@ class SAM2VideoPredictor(SAM2Base):
             feat_sizes,
         ) = self._get_image_feature(inference_state, frame_idx, batch_size)
 
-        torch.save(current_vision_feats, f"../sample_img_feats/frame{frame_idx}_vision_feats.pt")
-        torch.save(current_vision_pos_embeds, f"../sample_img_feats/frame{frame_idx}_pos_embeds.pt")
-        torch.save(feat_sizes, f"../sample_img_feats/frame{frame_idx}_feat_sizes.pt")
+        # torch.save(current_vision_feats, f"../sample_img_feats/frame{frame_idx}_vision_feats.pt")
+        # torch.save(current_vision_pos_embeds, f"../sample_img_feats/frame{frame_idx}_pos_embeds.pt")
+        # torch.save(feat_sizes, f"../sample_img_feats/frame{frame_idx}_feat_sizes.pt")
 
         # point and mask should not appear as input simultaneously on the same frame
         assert point_inputs is None or mask_inputs is None
