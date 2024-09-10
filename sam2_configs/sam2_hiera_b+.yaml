@@ -111,3 +111,5 @@ model:
   use_mlp_for_obj_ptr_proj: true
   # Compilation flag
   compile_image_encoder: False
+  # Memory stride
+  memory_temporal_stride_for_eval: 5
