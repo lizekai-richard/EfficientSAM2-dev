@@ -3,7 +3,7 @@
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-
+import json
 import warnings
 from collections import OrderedDict
 
@@ -843,6 +843,13 @@ class SAM2VideoPredictor(SAM2Base):
             current_vision_pos_embeds,
             feat_sizes,
         ) = self._get_image_feature(inference_state, frame_idx, batch_size)
+
+        with open(f"../sample_img_feats/frame{frame_idx}", "w") as f:
+            json.dump({
+                'vision_feats': current_vision_feats,
+                'vision_pos_embeds': current_vision_pos_embeds,
+                'feat_sizes': feat_sizes
+            }, f)
 
         # point and mask should not appear as input simultaneously on the same frame
         assert point_inputs is None or mask_inputs is None
