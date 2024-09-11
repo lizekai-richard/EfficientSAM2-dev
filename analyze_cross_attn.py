@@ -8,24 +8,24 @@ cross_attn_dir = "./mem_cross_attn/"
 frame_id = 1
 num_stages = 4
 mem_cross_attn_diffs_by_stage = [[] for _ in range(num_stages)]
+all_mem_cross_attns = []
 
-while os.path.exists(os.path.join(cross_attn_dir, f"frame{frame_id}.pt")) \
-        and os.path.exists(os.path.join(cross_attn_dir, f"frame{frame_id + 1}.pt")):
-    mem_cross_attn_prev = torch.load(os.path.join(cross_attn_dir, f"frame{frame_id}.pt"), map_location='cuda')
-    mem_cross_attn_cur = torch.load(os.path.join(cross_attn_dir, f"frame{frame_id + 1}.pt"), map_location='cuda')
+while os.path.exists(os.path.join(cross_attn_dir, f"frame{frame_id}.pt")):
+    mem_cross_attn = torch.load(os.path.join(cross_attn_dir, f"frame{frame_id}.pt"), map_location='cpu')
+    all_mem_cross_attns.append(mem_cross_attn)
+    frame_id += 1
 
-    for stage in range(num_stages):
-        cur_stage_prev = mem_cross_attn_prev[stage]
-        cur_stage_cur = mem_cross_attn_cur[stage]
+num_frames = frame_id - 1
+for stage in range(num_stages):
+    for i in range(num_frames - 1):
+        j = i + 1
+        mem_cross_attn_prev = all_mem_cross_attns[i][stage]
+        mem_cross_attn_cur = all_mem_cross_attns[j][stage]
 
-        diff = torch.sum((cur_stage_prev - cur_stage_cur) ** 2)
-        diff = torch.div(diff, torch.sum(cur_stage_prev ** 2))
+        diff = torch.sum((mem_cross_attn_cur - mem_cross_attn_prev) ** 2)
+        diff = torch.div(diff, torch.sum(mem_cross_attn_prev ** 2))
 
         mem_cross_attn_diffs_by_stage[stage].append(diff.item())
-
-    del mem_cross_attn_prev, mem_cross_attn_cur
-    torch.cuda.empty_cache()
-
 
 plt.figure(figsize=(30, 10))
 frames = np.arange(len(mem_cross_attn_diffs_by_stage[0]))
