@@ -524,7 +524,7 @@ class SAM2Base(torch.nn.Module):
         # In this case, we skip the fusion with any memory.
         if self.num_maskmem == 0:  # Disable memory and skip fusion
             pix_feat = current_vision_feats[-1].permute(1, 2, 0).view(B, C, H, W)
-            return pix_feat
+            return pix_feat, None
 
         num_obj_ptr_tokens = 0
         # Step 1: condition the visual features of the current frame on previous memories
@@ -654,7 +654,7 @@ class SAM2Base(torch.nn.Module):
                 # directly add no-mem embedding (instead of using the transformer encoder)
                 pix_feat_with_mem = current_vision_feats[-1] + self.no_mem_embed
                 pix_feat_with_mem = pix_feat_with_mem.permute(1, 2, 0).view(B, C, H, W)
-                return pix_feat_with_mem
+                return pix_feat_with_mem, None
 
             # Use a dummy token on the first frame (to avoid empty memory input to tranformer encoder)
             to_cat_memory = [self.no_mem_embed.expand(1, B, self.mem_dim)]
@@ -788,8 +788,11 @@ class SAM2Base(torch.nn.Module):
                 num_frames=num_frames,
                 track_in_reverse=track_in_reverse,
             )
-
-            torch.save(mem_cas, f"../../mem_cross_attn/frame{frame_idx}.pt")
+            
+            # if mem_cas:
+            #     mem_cas = [ca.detach().cpu() for ca in mem_cas]
+            #     torch.save(mem_cas, f"/home/wangkai/EfficientSAM2/mem_cross_attn/frame{frame_idx}.pt")
+                
             # apply SAM-style segmentation head
             # here we might feed previously predicted low-res SAM mask logits into the SAM mask decoder,
             # e.g. in demo where such logits come from earlier interaction instead of correction sampling
