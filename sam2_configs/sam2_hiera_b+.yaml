@@ -113,3 +113,4 @@ model:
   compile_image_encoder: False
   # Memory stride
   memory_temporal_stride_for_eval: 1
+  cache_freq: 5

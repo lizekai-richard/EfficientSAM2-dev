@@ -4,12 +4,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sam2.build_sam import build_sam2_video_predictor
 from PIL import Image
+os.environ["CUDA_VISIBLE_DEVICES"]="6"
 
 checkpoint = "./checkpoints/sam2_hiera_base_plus.pt"
 model_cfg = "sam2_hiera_b+.yaml"
 predictor = build_sam2_video_predictor(model_cfg, checkpoint)
 
-video_dir = "./notebooks/videos/bedroom"
+video_dir = "./video_samples"
+# video_dir = "./notebooks/videos/bedroom/"
 frame_names = [
     p for p in os.listdir(video_dir)
     if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG"]
@@ -44,12 +46,16 @@ def show_box(box, ax):
 
 with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
     state = predictor.init_state(video_dir)
-
+    
     # add new prompts and instantly get the output on the same frame
     ann_frame_idx = 0
     ann_obj_id = 1
     points = np.array([[210, 350]], dtype=np.float32)
     labels = np.array([1], np.int32)
+    # Let's add a positive click at (x, y) = (210, 350) to get started
+    # points = np.array([[210, 650]], dtype=np.float32)
+    # for labels, `1` means positive click and `0` means negative click
+    # labels = np.array([1], np.int32)
     frame_idx, object_ids, masks = predictor.add_new_points_or_box(
         inference_state=state,
         frame_idx=ann_frame_idx,
@@ -69,7 +75,7 @@ with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
             for i, out_obj_id in enumerate(out_obj_ids)
         }
 
-    vis_frame_stride = 10
+    vis_frame_stride = 1
     plt.close("all")
     for out_frame_idx in range(0, len(frame_names), vis_frame_stride):
         plt.figure(figsize=(6, 4))
@@ -77,3 +83,5 @@ with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
         plt.imshow(Image.open(os.path.join(video_dir, frame_names[out_frame_idx])))
         for out_obj_id, out_mask in video_segments[out_frame_idx].items():
             show_mask(out_mask, plt.gca(), obj_id=out_obj_id)
+            plt.savefig(f"./cache_low_res_results/{out_frame_idx}.pdf")
+            plt.close()

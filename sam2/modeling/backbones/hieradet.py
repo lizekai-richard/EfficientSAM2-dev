@@ -3,6 +3,7 @@
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
+import copy
 
 from functools import partial
 from typing import List, Tuple, Union
@@ -201,6 +202,7 @@ class Hiera(nn.Module):
         self.window_spec = window_spec
 
         depth = sum(stages)
+        self.stages = stages
         self.q_stride = q_stride
         self.stage_ends = [sum(stages[:i]) - 1 for i in range(1, len(stages) + 1)]
         assert 0 <= q_pool <= len(self.stage_ends[:-1])
@@ -272,7 +274,7 @@ class Hiera(nn.Module):
         pos_embed = pos_embed.permute(0, 2, 3, 1)
         return pos_embed
 
-    def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
+    def forward(self, x: torch.Tensor, skip_low_res_blocks=False) -> List[torch.Tensor]:
         x = self.patch_embed(x)
         # x: (B, H, W, C)
 
@@ -280,12 +282,24 @@ class Hiera(nn.Module):
         x = x + self._get_pos_embed(x.shape[1:3])
 
         outputs = []
-        for i, blk in enumerate(self.blocks):
-            x = blk(x)
-            if (i == self.stage_ends[-1]) or (
-                i in self.stage_ends and self.return_interm_layers
-            ):
-                feats = x.permute(0, 3, 1, 2)
-                outputs.append(feats)
-
+        
+        if not skip_low_res_blocks:
+            for i, blk in enumerate(self.blocks):
+                x = blk(x)
+                if (i == self.stage_ends[-1]) or (
+                    i in self.stage_ends and self.return_interm_layers
+                ):
+                    feats = x.permute(0, 3, 1, 2)
+                    outputs.append(feats)
+        else:
+            high_res_block_depth = sum(self.stages[:2])
+            for i, blk in enumerate(self.blocks[ :high_res_block_depth]):
+                x = blk(x)
+                if (i == self.stage_ends[-1]) or (
+                    i in self.stage_ends and self.return_interm_layers
+                ):
+                    feats = x.permute(0, 3, 1, 2)
+                    outputs.append(feats)
+            outputs.append(None)
+            outputs.append(None)
         return outputs

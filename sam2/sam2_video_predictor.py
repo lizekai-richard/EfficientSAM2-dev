@@ -28,6 +28,7 @@ class SAM2VideoPredictor(SAM2Base):
         clear_non_cond_mem_around_input=False,
         # whether to also clear non-conditioning memory of the surrounding frames (only effective when `clear_non_cond_mem_around_input` is True).
         clear_non_cond_mem_for_multi_obj=False,
+        cache_freq=10000000,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -35,6 +36,7 @@ class SAM2VideoPredictor(SAM2Base):
         self.non_overlap_masks = non_overlap_masks
         self.clear_non_cond_mem_around_input = clear_non_cond_mem_around_input
         self.clear_non_cond_mem_for_multi_obj = clear_non_cond_mem_for_multi_obj
+        self.cache_freq = cache_freq
 
     @torch.inference_mode()
     def init_state(
@@ -77,6 +79,7 @@ class SAM2VideoPredictor(SAM2Base):
         inference_state["mask_inputs_per_obj"] = {}
         # visual features on a small number of recently visited frames for quick interactions
         inference_state["cached_features"] = {}
+        inference_state["cached_low_res_features"] = {}
         # values that don't change across frames (so we only need to hold one copy of them)
         inference_state["constants"] = {}
         # mapping between client-side object id and model-side object index
@@ -689,6 +692,8 @@ class SAM2VideoPredictor(SAM2Base):
             # that received input clicks or mask). Note that we cannot directly run
             # batched forward on them via `_run_single_frame_inference` because the
             # number of clicks on each object might be different.
+            # print(inference_state['cached_features'].keys())
+            
             if frame_idx in consolidated_frame_inds["cond_frame_outputs"]:
                 storage_key = "cond_frame_outputs"
                 current_out = output_dict[storage_key][frame_idx]
@@ -794,15 +799,32 @@ class SAM2VideoPredictor(SAM2Base):
         image, backbone_out = inference_state["cached_features"].get(
             frame_idx, (None, None)
         )
-        if backbone_out is None:
+        cache_frame_idx = (frame_idx // self.cache_freq) * self.cache_freq
+        if cache_frame_idx == frame_idx and backbone_out is None:
             # Cache miss -- we will run inference on a single image
             device = inference_state["device"]
             image = inference_state["images"][frame_idx].to(device).float().unsqueeze(0)
+            # print(f"forwarding on the frame {frame_idx}")
             backbone_out = self.forward_image(image)
             # Cache the most recent frame's feature (for repeated interactions with
             # a frame; we can use an LRU cache for more frames in the future).
             inference_state["cached_features"] = {frame_idx: (image, backbone_out)}
-
+            inference_state["cached_low_res_features"] = {frame_idx: backbone_out['low_res_feats']}
+        else:    
+            # _, cache_backbone_out = inference_state["cached_features"].get(
+            #     cache_frame_idx, (None, None)
+            # )
+            cached_low_res_feats = inference_state["cached_low_res_features"].get(
+                cache_frame_idx, None
+            )
+            assert cached_low_res_feats is not None
+            device = inference_state["device"]
+            image = inference_state["images"][frame_idx].to(device).float().unsqueeze(0)
+            # backbone_out = cache_backbone_out
+            print(f"Using cahced low resolution features from frame {cache_frame_idx} on frame {frame_idx}")
+            backbone_out = self.forward_image(image, cached_low_res_feats=cached_low_res_feats)
+            # inference_state["cached_features"] = {frame_idx: (image, backbone_out)}
+            
         # expand the features to have the same dimension as the number of objects
         expanded_image = image.expand(batch_size, -1, -1, -1)
         expanded_backbone_out = {
@@ -882,6 +904,8 @@ class SAM2VideoPredictor(SAM2Base):
         maskmem_pos_enc = self._get_maskmem_pos_enc(inference_state, current_out)
         # object pointer is a small tensor, so we always keep it on GPU memory for fast access
         obj_ptr = current_out["obj_ptr"]
+        torch.save(obj_ptr, f"./obj_ptrs/frame{frame_idx}.pt")
+        
         # make a compact version of this frame's output to reduce the state size
         compact_current_out = {
             "maskmem_features": maskmem_features,

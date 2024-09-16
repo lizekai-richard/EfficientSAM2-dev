@@ -30,13 +30,25 @@ class ImageEncoder(nn.Module):
             self.trunk.channel_list == self.neck.backbone_channel_list
         ), f"Channel dims of trunk and neck do not match. Trunk: {self.trunk.channel_list}, neck: {self.neck.backbone_channel_list}"
 
-    def forward(self, sample: torch.Tensor):
+    def forward(self, sample: torch.Tensor, cached_low_res_feats=None):
         # Forward through backbone
-        xs = self.trunk(sample)
-
+        if cached_low_res_feats is not None:
+            xs = self.trunk(sample, skip_low_res_blocks=True)
+        else:
+            xs = self.trunk(sample, skip_low_res_blocks=False)
+            
+        if xs[2] is None and xs[3] is None:
+            assert cached_low_res_feats is not None
+            xs[2] = cached_low_res_feats[0]
+            xs[3] = cached_low_res_feats[1]
+        
+        res_64x64_feat = xs[2].detach().clone()
+        res_32x32_feat = xs[3].detach().clone()
+        
         # print(len(xs))
         # for x in xs:
         #     print(x.size())
+            
         features, pos = self.neck(xs)
 
         # flops_trunk = FlopCountAnalysis(self.trunk, sample)
@@ -52,16 +64,19 @@ class ImageEncoder(nn.Module):
         #     f.write(flop_count_table(flops_trunk))
         #     f.write('\n')
         #     f.write(flop_count_table(flops_neck))
+        # for feat in features:
+        #     print(feat.size())
 
         if self.scalp > 0:
             # Discard the lowest resolution features
             features, pos = features[: -self.scalp], pos[: -self.scalp]
-
+            
         src = features[-1]
         output = {
             "vision_features": src,
             "vision_pos_enc": pos,
             "backbone_fpn": features,
+            "low_res_feats": (res_64x64_feat, res_32x32_feat)
         }
         return output
 
@@ -131,6 +146,7 @@ class FpnNeck(nn.Module):
         # see https://github.com/facebookresearch/detectron2/blob/main/detectron2/modeling/backbone/fpn.py
         prev_features = None
         # forward in top-down order (from low to high resolution)
+
         n = len(self.convs) - 1
         for i in range(n, -1, -1):
             x = xs[i]
@@ -150,6 +166,7 @@ class FpnNeck(nn.Module):
                     prev_features /= 2
             else:
                 prev_features = lateral_features
+
             x_out = prev_features
             out[i] = x_out
             pos[i] = self.position_encoding(x_out).to(x_out.dtype)
