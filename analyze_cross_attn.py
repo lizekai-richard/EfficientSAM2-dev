@@ -17,15 +17,16 @@ while os.path.exists(os.path.join(cross_attn_dir, f"frame{frame_id}.pt")):
 
 num_frames = frame_id - 1
 for stage in range(num_stages):
+    print(f"Stage {stage} size {all_mem_cross_attns[0][stage].size()}")
     for i in range(num_frames - 1):
         j = i + 1
         mem_cross_attn_prev = all_mem_cross_attns[i][stage]
         mem_cross_attn_cur = all_mem_cross_attns[j][stage]
+        num_params = mem_cross_attn_prev.numel()
 
-        diff = torch.sum((mem_cross_attn_cur - mem_cross_attn_prev) ** 2)
-        diff = torch.div(diff, torch.sum(mem_cross_attn_prev ** 2))
+        diff = torch.sum((mem_cross_attn_cur - mem_cross_attn_prev) ** 2).item() / num_params
 
-        mem_cross_attn_diffs_by_stage[stage].append(diff.item())
+        mem_cross_attn_diffs_by_stage[stage].append(diff)
 
 plt.figure(figsize=(30, 10))
 frames = np.arange(len(mem_cross_attn_diffs_by_stage[0]))

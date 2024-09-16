@@ -47,8 +47,9 @@ def compute_diff(num_frames, img_feats, pos_embeds):
         assert feat_j.size(1) == 1
         feat_i = feat_i.unsqueeze(dim=1)
         feat_j = feat_j.unsqueeze(dim=1)
-        feat_diff = torch.div(torch.sum((feat_i - feat_j) ** 2), torch.sum(feat_i ** 2))
-        feat_diffs.append(feat_diff.item())
+        num_params = feat_i.numel()
+        feat_diff = torch.sum((feat_i - feat_j) ** 2).item() / num_params
+        feat_diffs.append(feat_diff)
 
         pos_embed_i = pos_embeds[i]
         pos_embed_j = pos_embeds[j]
@@ -74,9 +75,6 @@ def plot(all_img_features, all_pos_embeds):
         feat_diffs, pos_diffs = compute_diff(num_frames, img_feats, pos_embeds)
         feat_diffs_by_stage.append(feat_diffs)
         pos_embed_diffs_by_stage.append(pos_diffs)
-
-    print(min(pos_embed_diffs_by_stage[0]))
-    print(max(pos_embed_diffs_by_stage[0]))
 
     plt.figure(figsize=(30, 10))
     frames = np.arange(len(feat_diffs_by_stage[0]))
