@@ -274,7 +274,7 @@ class Hiera(nn.Module):
         pos_embed = pos_embed.permute(0, 2, 3, 1)
         return pos_embed
 
-    def forward(self, x: torch.Tensor, skip_low_res_blocks=False) -> List[torch.Tensor]:
+    def forward(self, x: torch.Tensor, skip_high_res_blocks=False) -> List[torch.Tensor]:
         x = self.patch_embed(x)
         # x: (B, H, W, C)
 
@@ -283,7 +283,7 @@ class Hiera(nn.Module):
 
         outputs = []
         
-        if not skip_low_res_blocks:
+        if not skip_high_res_blocks:
             for i, blk in enumerate(self.blocks):
                 x = blk(x)
                 if (i == self.stage_ends[-1]) or (
@@ -292,14 +292,14 @@ class Hiera(nn.Module):
                     feats = x.permute(0, 3, 1, 2)
                     outputs.append(feats)
         else:
+            outputs.append(None)
+            outputs.append(None)
             high_res_block_depth = sum(self.stages[:2])
-            for i, blk in enumerate(self.blocks[ :high_res_block_depth]):
+            for i, blk in enumerate(self.blocks[high_res_block_depth:]):
                 x = blk(x)
                 if (i == self.stage_ends[-1]) or (
                     i in self.stage_ends and self.return_interm_layers
                 ):
                     feats = x.permute(0, 3, 1, 2)
                     outputs.append(feats)
-            outputs.append(None)
-            outputs.append(None)
         return outputs

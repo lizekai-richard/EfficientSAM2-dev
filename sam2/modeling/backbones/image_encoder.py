@@ -30,20 +30,23 @@ class ImageEncoder(nn.Module):
             self.trunk.channel_list == self.neck.backbone_channel_list
         ), f"Channel dims of trunk and neck do not match. Trunk: {self.trunk.channel_list}, neck: {self.neck.backbone_channel_list}"
 
-    def forward(self, sample: torch.Tensor, cached_low_res_feats=None):
+    def forward(self, sample: torch.Tensor, cached_high_res_feats=None):
         # Forward through backbone
-        if cached_low_res_feats is not None:
-            xs = self.trunk(sample, skip_low_res_blocks=True)
+        if cached_high_res_feats is not None:
+            xs = self.trunk(sample, skip_high_res_blocks=True)
+            xs[0] = cached_high_res_feats[0]
+            xs[1] = cached_high_res_feats[1]
+
         else:
-            xs = self.trunk(sample, skip_low_res_blocks=False)
+            xs = self.trunk(sample, skip_high_res_blocks=False)
             
-        if xs[2] is None and xs[3] is None:
-            assert cached_low_res_feats is not None
-            xs[2] = cached_low_res_feats[0]
-            xs[3] = cached_low_res_feats[1]
+        # if xs[0] is None and xs[1] is None:
+        #     assert cached_low_res_feats is not None
+        #     xs[2] = cached_low_res_feats[0]
+        #     xs[3] = cached_low_res_feats[1]
         
-        res_64x64_feat = xs[2].detach().clone()
-        res_32x32_feat = xs[3].detach().clone()
+        res_256x256_feat = xs[0].detach().clone()
+        res_128x128_feat = xs[1].detach().clone()
         
         # print(len(xs))
         # for x in xs:
@@ -76,7 +79,7 @@ class ImageEncoder(nn.Module):
             "vision_features": src,
             "vision_pos_enc": pos,
             "backbone_fpn": features,
-            "low_res_feats": (res_64x64_feat, res_32x32_feat)
+            "high_res_feats": (res_256x256_feat, res_128x128_feat)
         }
         return output
 

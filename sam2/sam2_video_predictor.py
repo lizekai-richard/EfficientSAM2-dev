@@ -809,21 +809,19 @@ class SAM2VideoPredictor(SAM2Base):
             # Cache the most recent frame's feature (for repeated interactions with
             # a frame; we can use an LRU cache for more frames in the future).
             inference_state["cached_features"] = {frame_idx: (image, backbone_out)}
-            inference_state["cached_low_res_features"] = {frame_idx: backbone_out['low_res_feats']}
-        else:    
-            # _, cache_backbone_out = inference_state["cached_features"].get(
-            #     cache_frame_idx, (None, None)
-            # )
-            cached_low_res_feats = inference_state["cached_low_res_features"].get(
-                cache_frame_idx, None
-            )
-            assert cached_low_res_feats is not None
-            device = inference_state["device"]
-            image = inference_state["images"][frame_idx].to(device).float().unsqueeze(0)
-            # backbone_out = cache_backbone_out
-            print(f"Using cahced low resolution features from frame {cache_frame_idx} on frame {frame_idx}")
-            backbone_out = self.forward_image(image, cached_low_res_feats=cached_low_res_feats)
-            # inference_state["cached_features"] = {frame_idx: (image, backbone_out)}
+            inference_state["cached_high_res_features"] = {frame_idx: backbone_out['high_res_feats']}
+
+        else:
+            if backbone_out is None:
+                cached_high_res_feats = inference_state["cached_high_res_features"].get(
+                    cache_frame_idx, None
+                )
+                assert cached_high_res_feats is not None
+                device = inference_state["device"]
+                image = inference_state["images"][frame_idx].to(device).float().unsqueeze(0)
+                print(f"Using cached high resolution features from frame {cache_frame_idx} on frame {frame_idx}")
+                backbone_out = self.forward_image(image, cached_high_res_feats=cached_high_res_feats)
+                inference_state["cached_features"] = {frame_idx: (image, backbone_out)}
             
         # expand the features to have the same dimension as the number of objects
         expanded_image = image.expand(batch_size, -1, -1, -1)
