@@ -4,14 +4,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sam2.build_sam import build_sam2_video_predictor
 from PIL import Image
-os.environ["CUDA_VISIBLE_DEVICES"]="3,4"
+os.environ["CUDA_VISIBLE_DEVICES"]="6"
 
 checkpoint = "./checkpoints/sam2_hiera_base_plus.pt"
 model_cfg = "sam2_hiera_b+.yaml"
 predictor = build_sam2_video_predictor(model_cfg, checkpoint)
 
-# video_dir = "./video_samples"
-video_dir = "./notebooks/videos/bedroom/"
+video_dir = "./video_samples"
+# video_dir = "./notebooks/videos/bedroom/"
 frame_names = [
     p for p in os.listdir(video_dir)
     if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG"]
@@ -75,13 +75,13 @@ with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
             for i, out_obj_id in enumerate(out_obj_ids)
         }
 
-    # vis_frame_stride = 2
-    # plt.close("all")
-    # for out_frame_idx in range(0, len(frame_names), vis_frame_stride):
-    #     plt.figure(figsize=(6, 4))
-    #     plt.title(f"frame {out_frame_idx}")
-    #     plt.imshow(Image.open(os.path.join(video_dir, frame_names[out_frame_idx])))
-    #     for out_obj_id, out_mask in video_segments[out_frame_idx].items():
-    #         show_mask(out_mask, plt.gca(), obj_id=out_obj_id)
-    #         plt.savefig(f"./results/{out_frame_idx}.pdf")
-    #         plt.close()
+    vis_frame_stride = 1
+    plt.close("all")
+    for out_frame_idx in range(0, len(frame_names), vis_frame_stride):
+        plt.figure(figsize=(6, 4))
+        plt.title(f"frame {out_frame_idx}")
+        plt.imshow(Image.open(os.path.join(video_dir, frame_names[out_frame_idx])))
+        for out_obj_id, out_mask in video_segments[out_frame_idx].items():
+            show_mask(out_mask, plt.gca(), obj_id=out_obj_id)
+            plt.savefig(f"./cache_low_res_results/{out_frame_idx}.pdf")
+            plt.close()

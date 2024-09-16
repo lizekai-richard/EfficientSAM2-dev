@@ -463,9 +463,9 @@ class SAM2Base(torch.nn.Module):
             object_score_logits,
         )
 
-    def forward_image(self, img_batch: torch.Tensor):
+    def forward_image(self, img_batch: torch.Tensor, cached_low_res_feats=None):
         """Get the image feature on the input batch."""
-        backbone_out = self.image_encoder(img_batch)
+        backbone_out = self.image_encoder(img_batch, cached_low_res_feats)
 
         # flops_image_encoder = FlopCountAnalysis(self.image_encoder, img_batch)
         # save_dir = "/home/wangkai/EfficientSAM2/image_encoder"
